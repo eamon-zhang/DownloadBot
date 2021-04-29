@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"onedrive"
 	"os"
 	"path"
 	"path/filepath"
@@ -65,12 +64,10 @@ var bundle *i18n.Bundle
 var loc *i18n.Localizer
 
 func locLan(locLanguage string) {
-	_, err := os.Stat(info.DownloadFolder)
-	dropErr(err)
 
 	bundle = i18n.NewBundle(language.Chinese)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
-	_, err = os.Stat("i18n")
+	_, err := os.Stat("i18n")
 	if err != nil {
 		err := os.Mkdir("i18n", 0666)
 		dropErr(err)
@@ -82,7 +79,7 @@ func locLan(locLanguage string) {
 		defer resp.Body.Close()
 		data, err := ioutil.ReadAll(resp.Body)
 		dropErr(err)
-		ioutil.WriteFile(fmt.Sprintf("i18n/active.%s.json", locLanguage), data, 0644)
+		ioutil.WriteFile(fmt.Sprintf("i18n/active.%s.json", locLanguage), data, 0666)
 	} else {
 		url := "https://cdn.jsdelivr.net/gh/gaowanliang/DownloadBot@latest/i18n/"
 		j := pageDownload(url)
@@ -160,6 +157,10 @@ func locText(MessageIDs ...string) string {
 }
 
 func isLocal(uri string) bool {
+	_, err := os.Stat(info.DownloadFolder)
+	if err != nil {
+		return false
+	}
 	return strings.Contains(uri, "127.0.0.1") || strings.Contains(uri, "localhost")
 }
 
@@ -512,18 +513,4 @@ func toInt64(text string) int64 {
 	i, err := strconv.ParseInt(text, 10, 64)
 	dropErr(err)
 	return i
-}
-
-func getNewOneDriveInfo(url string) string {
-	return onedrive.ApplyForNewPass(url)
-}
-
-func uploadDFToOneDrive(infoPath string) {
-	FileControlChan <- "close"
-	//log.Println(strings.ReplaceAll(info.DownloadFolder, "\\", "/"))
-	go onedrive.Upload(strings.ReplaceAll(infoPath, "\\", "/"), strings.ReplaceAll(info.DownloadFolder, "\\", "/"), 3, func() func(text string) {
-		return sendAutoUpdateMessage()
-	}, func(text string) string {
-		return locText(text)
-	})
 }
